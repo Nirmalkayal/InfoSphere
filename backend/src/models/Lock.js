@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const LockSchema = new mongoose.Schema({
   slot: { type: mongoose.Schema.Types.ObjectId, ref: 'Slot', required: true },
   apiKey: { type: mongoose.Schema.Types.ObjectId, ref: 'ApiKey' },
+  platform: { type: String },
   expiresAt: { type: Date, required: true },
   meta: { type: Object }
 }, { timestamps: true });
