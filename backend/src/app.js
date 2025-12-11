@@ -7,13 +7,15 @@ const env = require('./config/env');
 const externalRoutes = require('./routes/externalRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 
-connectDB();
+// connectDB(); // Moved to server.js
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-app.use('/api', externalRoutes);
+const apiRoutes = require('./routes/api');
+
+app.use('/api', apiRoutes);
 app.use('/admin', adminRoutes);
 
 app.get('/', (req, res) => res.send('Turf Locks API'));

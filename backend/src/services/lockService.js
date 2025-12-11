@@ -1,6 +1,7 @@
 const Lock = require('../models/Lock');
 const Slot = require('../models/Slot');
 const mongoose = require('mongoose');
+const { broadcast } = require('./webhookService');
 
 async function createLock(slotId, apiKeyId, ttlMs) {
   const expiresAt = new Date(Date.now() + ttlMs);
@@ -14,6 +15,15 @@ async function createLock(slotId, apiKeyId, ttlMs) {
   if (!slot) return null;
 
   const lock = await Lock.create({ slot: slot._id, apiKey: apiKeyId, expiresAt });
+
+  // Notify partners
+  broadcast('SLOT_LOCKED', {
+    slotId: slot._id,
+    status: 'locked',
+    expiresAt,
+    lockedBy: apiKeyId || 'internal'
+  });
+
   return lock;
 }
 
@@ -31,6 +41,14 @@ async function releaseLock(lockId) {
     await Lock.deleteOne({ _id: lock._id }).session(session);
     await session.commitTransaction();
     session.endSession();
+
+    // Notify partners
+    broadcast('SLOT_RELEASED', {
+      slotId: lock.slot,
+      status: 'available',
+      lockId: lockId
+    });
+
     return true;
   } catch (err) {
     await session.abortTransaction();

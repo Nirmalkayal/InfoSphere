@@ -5,7 +5,8 @@ const TurfSchema = new mongoose.Schema({
   location: { type: String },
   grounds: { type: Number, default: 0 },
   integrations: { type: Number, default: 0 },
-  status: { type: String, enum: ['active','inactive'], default: 'active' },
+  basePrice: { type: Number, default: 500 },
+  status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   meta: { type: Object }
 }, { timestamps: true });
 

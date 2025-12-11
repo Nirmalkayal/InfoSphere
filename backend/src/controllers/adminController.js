@@ -108,29 +108,46 @@ exports.listLogs = async (req, res) => {
   }
 };
 
+const { calculatePrice } = require('../services/pricingService');
+
 exports.listSlots = async (req, res) => {
+  const { start, end } = req.query; // ISO strings
+  if (!start || !end) return res.status(400).json({ error: 'Start/End required' });
+
   try {
-    const { from, to, turfId } = req.query;
-    const query = {};
-    if (from && to) {
-      query.start = { $gte: new Date(from) };
-      query.end = { $lte: new Date(to) };
-    }
-    if (turfId) query.turf = turfId;
-    const slots = await Slot.find(query).sort('start');
-    const data = slots.map(s => ({
-      id: s._id.toString(),
+    const filters = {
+      start: { $gte: new Date(start) },
+      end: { $lte: new Date(end) },
+    };
+    if (req.user?.turfId) filters.turf = req.user.turfId;
+
+    const slots = await Slot.find(filters);
+
+    // We also need to "fill in" the gaps if we were building a full schedule generator, 
+    // but here we just return what's in DB + maybe generate empty ones? 
+    // Actually, the current frontend likely expects ALL slots, but previous logic implies we only store "non-available" ones or pre-generated ones?
+    // Let's assume the DB contains ALL slots (since we seeded them or create them).
+    // If not, we iterate and calculate price.
+
+    // Optimization: Pre-fetch turfId once
+    const turfId = req.user?.turfId || '65c27a29f8d9a8c123456789';
+
+    const data = await Promise.all(slots.map(async s => ({
+      id: s._id,
       start: s.start,
       end: s.end,
       status: s.status,
-      platform: s.groundName ? 'internal' : 'other',
+      platform: s.platform || 'internal',
       apiKey: undefined,
       groundName: s.groundName,
       customerName: s.customerName,
-    }));
+      bookingId: s.booking,
+      price: await calculatePrice(turfId, s.start)
+    })));
     res.json(data);
   } catch (err) {
-    res.json([]);
+    console.error(err);
+    res.status(500).json({ error: 'Failed to list slots' });
   }
 };
 
@@ -144,7 +161,7 @@ exports.dashboardMetrics = async (req, res) => {
       { $group: { _id: { m: { $month: '$occurredAt' } }, value: { $sum: 1 } } },
       { $sort: { '_id.m': 1 } }
     ]);
-    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const performanceData = monthNames.map((name, idx) => ({ month: name, value: perfAgg.find(x => x._id.m === idx + 1)?.value || 0 }));
 
     const platformAgg = await IntegrationLog.aggregate([

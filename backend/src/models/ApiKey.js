@@ -6,7 +6,8 @@ const ApiKeySchema = new mongoose.Schema({
   platform: { type: String },
   revoked: { type: Boolean, default: false },
   lastUsedAt: { type: Date },
-  rateLimitPerHour: { type: Number }
+  rateLimitPerHour: { type: Number },
+  webhookUrl: { type: String }
 }, { timestamps: true });
 
 module.exports = mongoose.model('ApiKey', ApiKeySchema);
